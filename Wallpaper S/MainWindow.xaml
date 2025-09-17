@@ -1,0 +1,210 @@
+<Window x:Class="LiveWallpaperApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Live Wallpaper Manager" Height="600" Width="900" 
+        WindowStartupLocation="CenterScreen" ResizeMode="CanResize">
+
+    <Window.Resources>
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#2D3748"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="8" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#4A5568"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#1A202C"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#3182CE"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2C5282"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#2A4365"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#E53E3E"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#C53030"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#9C1C1C"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="#F7FAFC">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#2D3748" Padding="20">
+            <StackPanel>
+                <TextBlock Text="Live Wallpaper Manager" 
+                          FontSize="24" 
+                          FontWeight="Bold" 
+                          Foreground="White" 
+                          HorizontalAlignment="Center"/>
+                <TextBlock Text="Импортируйте медиа файлы для создания живых обоев" 
+                          FontSize="14" 
+                          Foreground="#A0AEC0" 
+                          HorizontalAlignment="Center" 
+                          Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" Margin="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel - Controls -->
+            <Border Grid.Column="0" 
+                    Background="White" 
+                    CornerRadius="12" 
+                    Margin="0,0,10,0" 
+                    Effect="{DynamicResource {x:Static SystemParameters.DropShadowKey}}">
+                <StackPanel Margin="20">
+                    <TextBlock Text="Управление" 
+                              FontSize="18" 
+                              FontWeight="Bold" 
+                              Foreground="#2D3748" 
+                              Margin="0,0,0,20"/>
+
+                    <Button x:Name="SelectFileButton" 
+                            Content="Выбрать файл" 
+                            Style="{StaticResource PrimaryButton}" 
+                            Click="SelectFile_Click"/>
+
+                    <TextBlock Text="Или введите URL стрима:" 
+                              Margin="0,20,0,5" 
+                              Foreground="#4A5568"/>
+                    <TextBox x:Name="StreamUrlTextBox" 
+                             Height="35" 
+                             Padding="10" 
+                             BorderThickness="2" 
+                             BorderBrush="#E2E8F0" 
+                             Background="White"
+                             FontSize="14"/>
+
+                    <Button x:Name="LoadStreamButton" 
+                            Content="Загрузить стрим" 
+                            Style="{StaticResource ModernButton}" 
+                            Click="LoadStream_Click"/>
+
+                    <Separator Margin="0,20"/>
+
+                    <Button x:Name="SetWallpaperButton" 
+                            Content="Установить обои" 
+                            Style="{StaticResource PrimaryButton}" 
+                            IsEnabled="False"
+                            Click="SetWallpaper_Click"/>
+
+                    <Button x:Name="StopWallpaperButton" 
+                            Content="Остановить обои" 
+                            Style="{StaticResource DangerButton}" 
+                            IsEnabled="False"
+                            Click="StopWallpaper_Click"/>
+
+                    <Separator Margin="0,20"/>
+
+                    <TextBlock Text="Статус:" 
+                              FontWeight="Bold" 
+                              Foreground="#2D3748"/>
+                    <TextBlock x:Name="StatusText" 
+                              Text="Готов к работе" 
+                              Foreground="#4A5568" 
+                              TextWrapping="Wrap"/>
+
+                    <TextBlock Text="Текущий файл:" 
+                              FontWeight="Bold" 
+                              Foreground="#2D3748" 
+                              Margin="0,10,0,0"/>
+                    <TextBlock x:Name="CurrentFileText" 
+                              Text="Не выбран" 
+                              Foreground="#4A5568" 
+                              TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Right Panel - Preview -->
+            <Border Grid.Column="1" 
+                    Background="White" 
+                    CornerRadius="12" 
+                    Margin="10,0,0,0"
+                    Effect="{DynamicResource {x:Static SystemParameters.DropShadowKey}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Предварительный просмотр" 
+                              Grid.Row="0"
+                              FontSize="18" 
+                              FontWeight="Bold" 
+                              Foreground="#2D3748" 
+                              Margin="20,20,20,10"/>
+
+                    <Border Grid.Row="1" 
+                            Margin="20,0,20,20" 
+                            Background="#F8F9FA" 
+                            CornerRadius="8" 
+                            BorderThickness="2" 
+                            BorderBrush="#E2E8F0">
+                        <Grid x:Name="PreviewGrid">
+                            <!-- Preview content будет добавлен программно -->
+                            <TextBlock Text="Выберите медиа файл для предварительного просмотра" 
+                                      HorizontalAlignment="Center" 
+                                      VerticalAlignment="Center" 
+                                      Foreground="#A0AEC0" 
+                                      FontSize="16"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="#EDF2F7" Padding="20,10">
+            <TextBlock Text="Поддерживаемые форматы: JPG, PNG, GIF, MP4, AVI, MKV, WMV, MOV, FLV, WebM, HTTP/RTMP стримы" 
+                      HorizontalAlignment="Center" 
+                      Foreground="#718096" 
+                      FontSize="12"/>
+        </Border>
+    </Grid>
+</Window>
