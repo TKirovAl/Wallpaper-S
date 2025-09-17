@@ -22,12 +22,38 @@ namespace LiveWallpaperApp
         {
             InitializeComponent();
             SetupPreviewControls();
+            SetupUI();
             wallpaperPlayer = new MediaPlayer();
+        }
+
+        private void SetupUI()
+        {
+            // Установка текстов на русском языке
+            HeaderTitle.Text = "Live Wallpaper Manager";
+            HeaderSubtitle.Text = "Импортируйте медиа файлы для создания живых обоев";
+
+            ControlsTitle.Text = "Управление";
+            SelectFileButton.Content = "Выбрать файл";
+            StreamUrlLabel.Text = "Или введите URL стрима:";
+            LoadStreamButton.Content = "Загрузить стрим";
+            SetWallpaperButton.Content = "Установить обои";
+            StopWallpaperButton.Content = "Остановить обои";
+
+            StatusLabel.Text = "Статус:";
+            StatusText.Text = "Готов к работе";
+            CurrentFileLabel.Text = "Текущий файл:";
+            CurrentFileText.Text = "Не выбран";
+
+            PreviewTitle.Text = "Предварительный просмотр";
+            PreviewDefaultText.Text = "Выберите медиа файл для предварительного просмотра";
+
+            FooterText.Text = "Поддерживаемые форматы: JPG, PNG, GIF, MP4, AVI, MKV, WMV, MOV, FLV, WebM, HTTP/RTMP стримы";
         }
 
         private void SetupPreviewControls()
         {
-            // Очищаем превью грид
+            // Очищаем превью грид, но оставляем PreviewDefaultText
+            var defaultText = PreviewDefaultText;
             PreviewGrid.Children.Clear();
 
             // Создаем элементы управления превью
@@ -54,16 +80,6 @@ namespace LiveWallpaperApp
             PreviewGrid.Children.Add(previewVideo);
             PreviewGrid.Children.Add(previewImage);
             PreviewGrid.Children.Add(previewWeb);
-
-            // Добавляем текст по умолчанию
-            var defaultText = new TextBlock
-            {
-                Text = "Выберите медиа файл для предварительного просмотра",
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = new SolidColorBrush(Color.FromRgb(160, 174, 192)),
-                FontSize = 16
-            };
             PreviewGrid.Children.Add(defaultText);
         }
 
@@ -220,11 +236,7 @@ namespace LiveWallpaperApp
             previewVideo.Stop();
 
             // Скрываем текст по умолчанию
-            foreach (UIElement child in PreviewGrid.Children)
-            {
-                if (child is TextBlock)
-                    child.Visibility = Visibility.Collapsed;
-            }
+            PreviewDefaultText.Visibility = Visibility.Collapsed;
         }
 
         private void SetWallpaper_Click(object sender, RoutedEventArgs e)
