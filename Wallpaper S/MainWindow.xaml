@@ -96,8 +96,7 @@
 			<Border Grid.Column="0"
                     Background="White"
                     CornerRadius="12"
-                    Margin="0,0,10,0"
-                    Effect="{DynamicResource {x:Static SystemParameters.DropShadowKey}}">
+                    Margin="0,0,10,0">
 				<StackPanel Margin="20">
 					<TextBlock x:Name="ControlsTitle"
                               FontSize="18"
@@ -159,8 +158,7 @@
 			<Border Grid.Column="1"
                     Background="White"
                     CornerRadius="12"
-                    Margin="10,0,0,0"
-                    Effect="{DynamicResource {x:Static SystemParameters.DropShadowKey}}">
+                    Margin="10,0,0,0">
 				<Grid>
 					<Grid.RowDefinitions>
 						<RowDefinition Height="Auto"/>
