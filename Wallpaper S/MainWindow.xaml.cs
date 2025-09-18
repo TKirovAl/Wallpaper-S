@@ -1,332 +1,339 @@
-using Microsoft.Win32;
-using System;
+п»їusing System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Microsoft.Web.WebView2.Wpf;
+using Microsoft.Win32;
 
 namespace LiveWallpaperApp
 {
     public partial class MainWindow : Window
     {
-        private MediaPlayer wallpaperPlayer;
-        private MediaElement previewVideo;
-        private Image previewImage;
-        private WebView2 previewWeb;
-        private string currentMediaPath;
+        private WallpaperMediaPlayer? currentMediaPlayer;
+        private string? currentFilePath;
         private bool isWallpaperActive = false;
 
         public MainWindow()
         {
             InitializeComponent();
-            SetupPreviewControls();
-            SetupUI();
-            wallpaperPlayer = new MediaPlayer();
+            InitializeUI();
         }
 
-        private void SetupUI()
+        private void InitializeUI()
         {
-            // Установка текстов на русском языке
+            // Р—Р°РіРѕР»РѕРІРєРё
             HeaderTitle.Text = "Live Wallpaper Manager";
-            HeaderSubtitle.Text = "Импортируйте медиа файлы для создания живых обоев";
+            HeaderSubtitle.Text = "РЎРѕР·РґР°РІР°Р№С‚Рµ Р¶РёРІС‹Рµ РѕР±РѕРё РёР· РІРёРґРµРѕ, GIF Рё РёР·РѕР±СЂР°Р¶РµРЅРёР№";
 
-            ControlsTitle.Text = "Управление";
-            SelectFileButton.Content = "Выбрать файл";
-            StreamUrlLabel.Text = "Или введите URL стрима:";
-            LoadStreamButton.Content = "Загрузить стрим";
-            SetWallpaperButton.Content = "Установить обои";
-            StopWallpaperButton.Content = "Остановить обои";
+            // Р­Р»РµРјРµРЅС‚С‹ СѓРїСЂР°РІР»РµРЅРёСЏ
+            ControlsTitle.Text = "РЈРїСЂР°РІР»РµРЅРёРµ";
+            SelectFileButton.Content = "рџ“Ѓ Р’С‹Р±СЂР°С‚СЊ С„Р°Р№Р»";
+            StreamUrlLabel.Text = "URL СЃС‚СЂРёРјР°:";
+            LoadStreamButton.Content = "рџ“є Р—Р°РіСЂСѓР·РёС‚СЊ СЃС‚СЂРёРј";
+            SetWallpaperButton.Content = "рџ–јпёЏ РЈСЃС‚Р°РЅРѕРІРёС‚СЊ РѕР±РѕРё";
+            StopWallpaperButton.Content = "рџ—‘пёЏ РћСЃС‚Р°РЅРѕРІРёС‚СЊ РѕР±РѕРё";
 
-            StatusLabel.Text = "Статус:";
-            StatusText.Text = "Готов к работе";
-            CurrentFileLabel.Text = "Текущий файл:";
-            CurrentFileText.Text = "Не выбран";
+            // РџСЂРµРІСЊСЋ
+            PreviewTitle.Text = "РџСЂРµРґРІР°СЂРёС‚РµР»СЊРЅС‹Р№ РїСЂРѕСЃРјРѕС‚СЂ";
+            PreviewDefaultText.Text = "Р’С‹Р±РµСЂРёС‚Рµ С„Р°Р№Р» РґР»СЏ РїСЂРѕСЃРјРѕС‚СЂР°";
 
-            PreviewTitle.Text = "Предварительный просмотр";
-            PreviewDefaultText.Text = "Выберите медиа файл для предварительного просмотра";
+            // РЎС‚Р°С‚СѓСЃ
+            StatusLabel.Text = "РЎС‚Р°С‚СѓСЃ:";
+            StatusText.Text = "Р“РѕС‚РѕРІ Рє СЂР°Р±РѕС‚Рµ";
+            CurrentFileLabel.Text = "РўРµРєСѓС‰РёР№ С„Р°Р№Р»:";
+            CurrentFileText.Text = "РќРµ РІС‹Р±СЂР°РЅ";
 
-            FooterText.Text = "Поддерживаемые форматы: JPG, PNG, GIF, MP4, AVI, MKV, WMV, MOV, FLV, WebM, HTTP/RTMP стримы";
-        }
-
-        private void SetupPreviewControls()
-        {
-            // Очищаем превью грид, но оставляем PreviewDefaultText
-            var defaultText = PreviewDefaultText;
-            PreviewGrid.Children.Clear();
-
-            // Создаем элементы управления превью
-            previewVideo = new MediaElement
-            {
-                LoadedBehavior = MediaState.Manual,
-                UnloadedBehavior = MediaState.Close,
-                Stretch = Stretch.Uniform,
-                Visibility = Visibility.Collapsed
-            };
-            previewVideo.MediaEnded += (s, e) => previewVideo.Position = TimeSpan.Zero;
-
-            previewImage = new Image
-            {
-                Stretch = Stretch.Uniform,
-                Visibility = Visibility.Collapsed
-            };
-
-            previewWeb = new WebView2
-            {
-                Visibility = Visibility.Collapsed
-            };
-
-            PreviewGrid.Children.Add(previewVideo);
-            PreviewGrid.Children.Add(previewImage);
-            PreviewGrid.Children.Add(previewWeb);
-            PreviewGrid.Children.Add(defaultText);
+            // Р¤СѓС‚РµСЂ
+            FooterText.Text = "Live Wallpaper Manager v1.0 - РџРѕРґРґРµСЂР¶РёРІР°РµС‚ JPG, PNG, MP4, GIF, СЃС‚СЂРёРјС‹";
         }
 
         private void SelectFile_Click(object sender, RoutedEventArgs e)
         {
             var openFileDialog = new OpenFileDialog
             {
-                Title = "Выберите медиа файл",
-                Filter = MediaHelper.GetOpenFileDialogFilter(),
-                FilterIndex = 1
+                Title = "Р’С‹Р±РµСЂРёС‚Рµ С„Р°Р№Р» РґР»СЏ РѕР±РѕРµРІ",
+                Filter = "Р’СЃРµ РїРѕРґРґРµСЂР¶РёРІР°РµРјС‹Рµ|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.mp4;*.avi;*.mov;*.wmv;*.mkv;*.webm|" +
+                        "РР·РѕР±СЂР°Р¶РµРЅРёСЏ|*.jpg;*.jpeg;*.png;*.bmp|" +
+                        "Р’РёРґРµРѕ|*.mp4;*.avi;*.mov;*.wmv;*.mkv;*.webm|" +
+                        "GIF|*.gif|" +
+                        "Р’СЃРµ С„Р°Р№Р»С‹|*.*",
+                Multiselect = false
             };
 
             if (openFileDialog.ShowDialog() == true)
             {
-                if (!MediaHelper.IsValidMediaFile(openFileDialog.FileName))
-                {
-                    MessageBox.Show("Выбран неподдерживаемый тип файла", "Ошибка",
-                                   MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                currentMediaPath = openFileDialog.FileName;
-                LoadPreview(currentMediaPath);
-                UpdateUI();
+                currentFilePath = openFileDialog.FileName;
+                LoadMediaFile(currentFilePath);
             }
         }
 
-        private async void LoadStream_Click(object sender, RoutedEventArgs e)
+        private void LoadStream_Click(object sender, RoutedEventArgs e)
         {
             string streamUrl = StreamUrlTextBox.Text.Trim();
+
             if (string.IsNullOrEmpty(streamUrl))
             {
-                MessageBox.Show("Введите URL стрима", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateStatus("Р’РІРµРґРёС‚Рµ URL СЃС‚СЂРёРјР°", false);
                 return;
             }
 
-            streamUrl = MediaHelper.NormalizeStreamUrl(streamUrl);
-
-            if (!MediaHelper.ValidateStreamUrl(streamUrl))
+            if (!Uri.IsWellFormedUriString(streamUrl, UriKind.Absolute))
             {
-                MessageBox.Show("Некорректный URL стрима", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateStatus("РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ URL СЃС‚СЂРёРјР°", false);
                 return;
             }
 
-            currentMediaPath = streamUrl;
-            await LoadStreamPreview(streamUrl);
-            UpdateUI();
+            currentFilePath = streamUrl;
+            LoadMediaStream(streamUrl);
         }
 
-        private void LoadPreview(string mediaPath)
+        private void LoadMediaFile(string filePath)
         {
             try
             {
-                HideAllPreviews();
+                UpdateStatus("Р—Р°РіСЂСѓР·РєР° С„Р°Р№Р»Р°...", true);
+                CurrentFileText.Text = Path.GetFileName(filePath);
 
-                var mediaType = MediaHelper.GetMediaType(mediaPath);
+                string extension = Path.GetExtension(filePath).ToLower();
 
-                switch (mediaType)
+                switch (extension)
                 {
-                    case MediaHelper.MediaType.StaticImage:
-                        LoadImagePreview(mediaPath);
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".png":
+                    case ".bmp":
+                        LoadImagePreview(filePath);
                         break;
-
-                    case MediaHelper.MediaType.AnimatedImage:
-                        LoadImagePreview(mediaPath); // GIF будет анимирован автоматически
+                    case ".gif":
+                        LoadGifPreview(filePath);
                         break;
-
-                    case MediaHelper.MediaType.Video:
-                        LoadVideoPreview(mediaPath);
+                    case ".mp4":
+                    case ".avi":
+                    case ".mov":
+                    case ".wmv":
+                    case ".mkv":
+                    case ".webm":
+                        LoadVideoPreview(filePath);
                         break;
-
-                    case MediaHelper.MediaType.Stream:
-                        LoadStreamPreview(mediaPath).ConfigureAwait(false);
-                        break;
-
                     default:
-                        StatusText.Text = "Неподдерживаемый формат файла";
+                        UpdateStatus("РќРµРїРѕРґРґРµСЂР¶РёРІР°РµРјС‹Р№ С„РѕСЂРјР°С‚ С„Р°Р№Р»Р°", false);
                         return;
                 }
 
-                StatusText.Text = "Файл загружен успешно";
+                SetWallpaperButton.IsEnabled = true;
+                UpdateStatus("Р¤Р°Р№Р» Р·Р°РіСЂСѓР¶РµРЅ СѓСЃРїРµС€РЅРѕ", true);
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"Ошибка: {ex.Message}";
-                MessageBox.Show($"Ошибка загрузки файла: {ex.Message}", "Ошибка",
-                               MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё: {ex.Message}", false);
             }
         }
 
         private void LoadImagePreview(string imagePath)
         {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.UriSource = new Uri(imagePath, UriKind.Absolute);
-            bitmap.DecodePixelWidth = 400;
-            bitmap.EndInit();
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri(imagePath);
+                bitmap.DecodePixelWidth = 400; // РћРіСЂР°РЅРёС‡РёРІР°РµРј СЂР°Р·РјРµСЂ РґР»СЏ РїСЂРµРІСЊСЋ
+                bitmap.EndInit();
 
-            previewImage.Source = bitmap;
-            previewImage.Visibility = Visibility.Visible;
+                var image = new Image
+                {
+                    Source = bitmap,
+                    Stretch = Stretch.Uniform
+                };
+
+                PreviewGrid.Children.Clear();
+                PreviewGrid.Children.Add(image);
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РёР·РѕР±СЂР°Р¶РµРЅРёСЏ: {ex.Message}", false);
+            }
+        }
+
+        private void LoadGifPreview(string gifPath)
+        {
+            try
+            {
+                var image = new Image();
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri(gifPath);
+                bitmap.EndInit();
+
+                image.Source = bitmap;
+                image.Stretch = Stretch.Uniform;
+
+                PreviewGrid.Children.Clear();
+                PreviewGrid.Children.Add(image);
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё GIF: {ex.Message}", false);
+            }
         }
 
         private void LoadVideoPreview(string videoPath)
         {
-            previewVideo.Source = new Uri(videoPath, UriKind.Absolute);
-            previewVideo.Visibility = Visibility.Visible;
-            previewVideo.Play();
-        }
-
-        private async System.Threading.Tasks.Task LoadStreamPreview(string streamUrl)
-        {
             try
             {
-                HideAllPreviews();
+                var mediaElement = new MediaElement
+                {
+                    Source = new Uri(videoPath),
+                    LoadedBehavior = MediaState.Manual,
+                    UnloadedBehavior = MediaState.Close,
+                    Stretch = Stretch.Uniform,
+                    Volume = 0 // Р‘РµР· Р·РІСѓРєР° РІ РїСЂРµРІСЊСЋ
+                };
 
-                await previewWeb.EnsureCoreWebView2Async();
+                mediaElement.MediaOpened += (s, e) => mediaElement.Play();
+                mediaElement.MediaEnded += (s, e) =>
+                {
+                    mediaElement.Position = TimeSpan.Zero;
+                    mediaElement.Play();
+                };
 
-                string html = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <style>
-                            body {{ margin: 0; padding: 0; background: black; overflow: hidden; }}
-                            video {{ max-width: 100%; max-height: 100%; width: auto; height: auto; }}
-                            .container {{ display: flex; justify-content: center; align-items: center; height: 100vh; }}
-                        </style>
-                    </head>
-                    <body>
-                        <div class='container'>
-                            <video autoplay muted controls>
-                                <source src='{streamUrl}' type='video/mp4'>
-                                <p>Стрим недоступен</p>
-                            </video>
-                        </div>
-                    </body>
-                    </html>";
-
-                previewWeb.NavigateToString(html);
-                previewWeb.Visibility = Visibility.Visible;
-                StatusText.Text = "Стрим загружен";
+                PreviewGrid.Children.Clear();
+                PreviewGrid.Children.Add(mediaElement);
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"Ошибка загрузки стрима: {ex.Message}";
+                UpdateStatus($"РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РІРёРґРµРѕ: {ex.Message}", false);
             }
         }
 
-        private void HideAllPreviews()
+        private void LoadMediaStream(string streamUrl)
         {
-            previewVideo.Visibility = Visibility.Collapsed;
-            previewImage.Visibility = Visibility.Collapsed;
-            previewWeb.Visibility = Visibility.Collapsed;
+            try
+            {
+                UpdateStatus("РџРѕРґРєР»СЋС‡РµРЅРёРµ Рє СЃС‚СЂРёРјСѓ...", true);
+                CurrentFileText.Text = streamUrl;
 
-            previewVideo.Stop();
+                var mediaElement = new MediaElement
+                {
+                    Source = new Uri(streamUrl),
+                    LoadedBehavior = MediaState.Manual,
+                    UnloadedBehavior = MediaState.Close,
+                    Stretch = Stretch.Uniform,
+                    Volume = 0
+                };
 
-            // Скрываем текст по умолчанию
-            PreviewDefaultText.Visibility = Visibility.Collapsed;
+                mediaElement.MediaOpened += (s, e) =>
+                {
+                    mediaElement.Play();
+                    SetWallpaperButton.IsEnabled = true;
+                    UpdateStatus("РЎС‚СЂРёРј РїРѕРґРєР»СЋС‡РµРЅ", true);
+                };
+
+                mediaElement.MediaFailed += (s, e) =>
+                {
+                    UpdateStatus($"РћС€РёР±РєР° СЃС‚СЂРёРјР°: {e.ErrorException?.Message}", false);
+                };
+
+                PreviewGrid.Children.Clear();
+                PreviewGrid.Children.Add(mediaElement);
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"РћС€РёР±РєР° РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє СЃС‚СЂРёРјСѓ: {ex.Message}", false);
+            }
         }
 
         private void SetWallpaper_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrEmpty(currentMediaPath))
+            if (string.IsNullOrEmpty(currentFilePath))
             {
-                MessageBox.Show("Сначала выберите медиа файл", "Ошибка",
-                               MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateStatus("Р¤Р°Р№Р» РЅРµ РІС‹Р±СЂР°РЅ", false);
                 return;
             }
 
             try
             {
-                // Если это статическое изображение, используем стандартный API Windows
-                if (MediaHelper.IsStaticImage(currentMediaPath))
+                UpdateStatus("РЈСЃС‚Р°РЅРѕРІРєР° РѕР±РѕРµРІ...", true);
+
+                string extension = Path.GetExtension(currentFilePath).ToLower();
+
+                if (extension == ".jpg" || extension == ".jpeg" || extension == ".png" || extension == ".bmp")
                 {
-                    if (WallpaperAPI.SetStaticWallpaper(currentMediaPath))
+                    // РЎС‚Р°С‚РёС‡РЅС‹Рµ РѕР±РѕРё
+                    if (WallpaperAPI.SetStaticWallpaper(currentFilePath))
                     {
-                        StatusText.Text = "Статические обои установлены";
+                        UpdateStatus("РЎС‚Р°С‚РёС‡РЅС‹Рµ РѕР±РѕРё СѓСЃС‚Р°РЅРѕРІР»РµРЅС‹", true);
                         isWallpaperActive = true;
-                        UpdateUI();
+                        StopWallpaperButton.IsEnabled = true;
                     }
                     else
                     {
-                        StatusText.Text = "Ошибка установки статических обоев";
+                        UpdateStatus("РћС€РёР±РєР° СѓСЃС‚Р°РЅРѕРІРєРё СЃС‚Р°С‚РёС‡РЅС‹С… РѕР±РѕРµРІ", false);
                     }
-                }
-                else if (MediaHelper.IsAnimatedMedia(currentMediaPath))
-                {
-                    // Для видео, GIF и стримов используем живые обои
-                    wallpaperPlayer.LoadMedia(currentMediaPath);
-                    wallpaperPlayer.StartAsWallpaper();
-                    StatusText.Text = "Живые обои активированы";
-                    isWallpaperActive = true;
-                    UpdateUI();
                 }
                 else
                 {
-                    MessageBox.Show("Неподдерживаемый тип медиа файла", "Ошибка",
-                                   MessageBoxButton.OK, MessageBoxImage.Warning);
+                    // Р–РёРІС‹Рµ РѕР±РѕРё (РІРёРґРµРѕ/GIF/СЃС‚СЂРёРј)
+                    StopCurrentWallpaper();
+
+                    currentMediaPlayer = new WallpaperMediaPlayer(currentFilePath);
+                    if (currentMediaPlayer.Start())
+                    {
+                        UpdateStatus("Р–РёРІС‹Рµ РѕР±РѕРё СѓСЃС‚Р°РЅРѕРІР»РµРЅС‹", true);
+                        isWallpaperActive = true;
+                        StopWallpaperButton.IsEnabled = true;
+                    }
+                    else
+                    {
+                        UpdateStatus("РћС€РёР±РєР° СѓСЃС‚Р°РЅРѕРІРєРё Р¶РёРІС‹С… РѕР±РѕРµРІ", false);
+                        currentMediaPlayer?.Dispose();
+                        currentMediaPlayer = null;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"Ошибка: {ex.Message}";
-                MessageBox.Show($"Ошибка установки обоев: {ex.Message}", "Ошибка",
-                               MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"РћС€РёР±РєР° СѓСЃС‚Р°РЅРѕРІРєРё РѕР±РѕРµРІ: {ex.Message}", false);
             }
         }
 
         private void StopWallpaper_Click(object sender, RoutedEventArgs e)
         {
+            StopCurrentWallpaper();
+            UpdateStatus("РћР±РѕРё РѕСЃС‚Р°РЅРѕРІР»РµРЅС‹", true);
+        }
+
+        private void StopCurrentWallpaper()
+        {
             try
             {
-                wallpaperPlayer.StopWallpaper();
+                currentMediaPlayer?.Stop();
+                currentMediaPlayer?.Dispose();
+                currentMediaPlayer = null;
 
-                // Восстанавливаем стандартные обои Windows
-                WallpaperAPI.SetStaticWallpaper("");
-
-                StatusText.Text = "Обои остановлены";
                 isWallpaperActive = false;
-                UpdateUI();
+                StopWallpaperButton.IsEnabled = false;
+
+                // Р’РѕР·РІСЂР°С‰Р°РµРј СЃС‚Р°РЅРґР°СЂС‚РЅС‹Рµ РѕР±РѕРё Windows
+                WallpaperAPI.RestoreDefaultWallpaper();
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"Ошибка: {ex.Message}";
+                UpdateStatus($"РћС€РёР±РєР° РѕСЃС‚Р°РЅРѕРІРєРё РѕР±РѕРµРІ: {ex.Message}", false);
             }
         }
 
-        private void UpdateUI()
+        private void UpdateStatus(string message, bool isSuccess)
         {
-            bool hasMedia = !string.IsNullOrEmpty(currentMediaPath);
-
-            SetWallpaperButton.IsEnabled = hasMedia && !isWallpaperActive;
-            StopWallpaperButton.IsEnabled = isWallpaperActive;
-
-            if (hasMedia)
-            {
-                CurrentFileText.Text = $"{Path.GetFileName(currentMediaPath)}\n{MediaHelper.GetFileInfo(currentMediaPath)}";
-            }
-            else
-            {
-                CurrentFileText.Text = "Не выбран";
-            }
+            StatusText.Text = message;
+            StatusText.Foreground = isSuccess ?
+                new SolidColorBrush(Color.FromRgb(0x38, 0xA1, 0x69)) :
+                new SolidColorBrush(Color.FromRgb(0xE5, 0x3E, 0x3E));
         }
 
         protected override void OnClosed(EventArgs e)
         {
-            wallpaperPlayer?.StopWallpaper();
-            wallpaperPlayer?.Close();
+            StopCurrentWallpaper();
             base.OnClosed(e);
         }
     }

@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 
 namespace LiveWallpaperApp
 {
-    public class MediaPlayer : IDisposable
+    public class WallpaperMediaPlayer : IDisposable
     {
         private Window? wallpaperWindow;
         private MediaElement? mediaElement;
@@ -16,7 +16,7 @@ namespace LiveWallpaperApp
         private bool isDisposed = false;
         private DispatcherTimer? reconnectTimer;
 
-        public MediaPlayer(string path)
+        public WallpaperMediaPlayer(string path)
         {
             mediaPath = path;
         }
@@ -54,19 +54,28 @@ namespace LiveWallpaperApp
                 Height = SystemParameters.VirtualScreenHeight
             };
 
-            // Важно: сначала показываем окно, потом интегрируем
             wallpaperWindow.Show();
             wallpaperWindow.WindowState = WindowState.Maximized;
 
-            // Принудительно отправляем окно на задний план
-            wallpaperWindow.Topmost = false;
+            // Событие после загрузки окна
+            wallpaperWindow.Loaded += WallpaperWindow_Loaded;
+        }
 
-            // Убираем фокус с окна
-            wallpaperWindow.Loaded += (s, e) =>
+        private void WallpaperWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            try
             {
-                wallpaperWindow.Activate();
-                SendToBack();
-            };
+                var handle = new System.Windows.Interop.WindowInteropHelper(wallpaperWindow).Handle;
+                if (handle != IntPtr.Zero)
+                {
+                    SendWindowToBack(handle);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при отправке окна назад: {ex.Message}", "Предупреждение",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private void SetupMediaElement()
@@ -76,25 +85,21 @@ namespace LiveWallpaperApp
                 Stretch = Stretch.UniformToFill,
                 LoadedBehavior = MediaState.Manual,
                 UnloadedBehavior = MediaState.Close,
-                Volume = 0, // Отключаем звук для обоев
+                Volume = 0,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch
             };
 
-            // Обработчики событий
             mediaElement.MediaOpened += OnMediaOpened;
             mediaElement.MediaEnded += OnMediaEnded;
             mediaElement.MediaFailed += OnMediaFailed;
 
-            // Загружаем медиа
             if (Uri.IsWellFormedUriString(mediaPath, UriKind.Absolute))
             {
-                // Это URL стрима
                 mediaElement.Source = new Uri(mediaPath);
             }
             else if (File.Exists(mediaPath))
             {
-                // Это локальный файл
                 mediaElement.Source = new Uri(mediaPath, UriKind.Absolute);
             }
             else
@@ -112,7 +117,6 @@ namespace LiveWallpaperApp
 
         private void OnMediaEnded(object sender, RoutedEventArgs e)
         {
-            // Зацикливаем воспроизведение
             if (mediaElement != null && !isDisposed)
             {
                 mediaElement.Position = TimeSpan.Zero;
@@ -122,7 +126,6 @@ namespace LiveWallpaperApp
 
         private void OnMediaFailed(object sender, ExceptionRoutedEventArgs e)
         {
-            // Для стримов пытаемся переподключиться
             if (Uri.IsWellFormedUriString(mediaPath, UriKind.Absolute))
             {
                 StartReconnectTimer();
@@ -139,8 +142,11 @@ namespace LiveWallpaperApp
             {
                 try
                 {
-                    mediaElement!.Source = new Uri(mediaPath);
-                    reconnectTimer.Stop();
+                    if (mediaElement != null)
+                    {
+                        mediaElement.Source = new Uri(mediaPath);
+                        reconnectTimer.Stop();
+                    }
                 }
                 catch
                 {
@@ -156,7 +162,6 @@ namespace LiveWallpaperApp
 
             try
             {
-                // Получаем handle окна
                 var windowInteropHelper = new System.Windows.Interop.WindowInteropHelper(wallpaperWindow);
                 IntPtr windowHandle = windowInteropHelper.Handle;
 
@@ -169,101 +174,87 @@ namespace LiveWallpaperApp
                             windowHandle = new System.Windows.Interop.WindowInteropHelper(wallpaperWindow).Handle;
                             if (windowHandle != IntPtr.Zero)
                             {
-                                IntegrateWindow(windowHandle);
+                                PerformIntegration(windowHandle);
                             }
                         }
                         catch (Exception ex)
                         {
-                            MessageBox.Show($"Ошибка интеграции с рабочим столом: {ex.Message}",
+                            MessageBox.Show($"Ошибка интеграции: {ex.Message}",
                                 "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
                         }
                     };
                 }
                 else
                 {
-                    IntegrateWindow(windowHandle);
+                    PerformIntegration(windowHandle);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при интеграции с рабочим столом: {ex.Message}",
+                MessageBox.Show($"Ошибка при интеграции: {ex.Message}",
                     "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
-        private void IntegrateWindow(IntPtr windowHandle)
+        private void PerformIntegration(IntPtr windowHandle)
         {
             try
             {
-                // Метод 1: Интеграция с WorkerW
-                if (TryWorkerWIntegration(windowHandle))
-                {
-                    return; // Успешно интегрировано
-                }
-
-                // Метод 2: Принудительное размещение на заднем плане
-                ForceToBackground(windowHandle);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Критическая ошибка интеграции: {ex.Message}",
-                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private bool TryWorkerWIntegration(IntPtr windowHandle)
-        {
-            try
-            {
+                // Попытка интеграции с WorkerW
                 WallpaperAPI.SetParentToDesktop(windowHandle);
                 HideFromAltTab(windowHandle);
-                return true;
             }
             catch
             {
-                return false;
+                // Альтернативное размещение
+                SendWindowToBack(windowHandle);
+                HideFromAltTab(windowHandle);
             }
         }
 
-        private void ForceToBackground(IntPtr windowHandle)
+        private void SendWindowToBack(IntPtr windowHandle)
         {
-            // Убираем из Alt+Tab
-            HideFromAltTab(windowHandle);
-
-            // Делаем окно прозрачным для мыши
-            int exStyle = GetWindowLong(windowHandle, GWL_EXSTYLE);
-            SetWindowLong(windowHandle, GWL_EXSTYLE, exStyle | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW);
-
-            // Отправляем на задний план
-            SetWindowPos(windowHandle, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-
-            // Убираем фокус
-            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            try
             {
-                wallpaperWindow.Topmost = false;
-                SendToBack();
-            }), DispatcherPriority.Background);
-        }
+                // Отправляем окно на задний план
+                SetWindowPos(windowHandle, HWND_BOTTOM, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
-        private void SendToBack()
-        {
-            if (wallpaperWindow != null)
+                // Делаем прозрачным для мыши
+                int exStyle = GetWindowLong(windowHandle, GWL_EXSTYLE);
+                SetWindowLong(windowHandle, GWL_EXSTYLE,
+                    exStyle | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW);
+
+                // Убираем фокус
+                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (wallpaperWindow != null)
+                    {
+                        wallpaperWindow.Topmost = false;
+                        wallpaperWindow.WindowState = WindowState.Normal;
+                        wallpaperWindow.WindowState = WindowState.Maximized;
+                    }
+                }), DispatcherPriority.Background);
+            }
+            catch (Exception ex)
             {
-                var handle = new System.Windows.Interop.WindowInteropHelper(wallpaperWindow).Handle;
-                SetWindowPos(handle, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-
-                // Убираем фокус с окна
-                wallpaperWindow.WindowState = WindowState.Normal;
-                wallpaperWindow.WindowState = WindowState.Maximized;
+                MessageBox.Show($"Ошибка отправки окна назад: {ex.Message}", "Предупреждение",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
         private void HideFromAltTab(IntPtr windowHandle)
         {
-            // Скрываем окно из Alt+Tab
-            int exStyle = GetWindowLong(windowHandle, GWL_EXSTYLE);
-            exStyle |= WS_EX_TOOLWINDOW;
-            SetWindowLong(windowHandle, GWL_EXSTYLE, exStyle);
+            try
+            {
+                int exStyle = GetWindowLong(windowHandle, GWL_EXSTYLE);
+                exStyle |= WS_EX_TOOLWINDOW;
+                SetWindowLong(windowHandle, GWL_EXSTYLE, exStyle);
+            }
+            catch
+            {
+                // Игнорируем ошибки
+            }
         }
 
         public void Stop()
@@ -296,7 +287,7 @@ namespace LiveWallpaperApp
             }
         }
 
-        // Windows API для управления окнами
+        // Windows API
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
